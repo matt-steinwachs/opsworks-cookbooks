@@ -5,7 +5,14 @@ upstream unicorn_<%= @application[:domains].first %> {
 server {
   listen 80;
   server_name <%= @application[:domains].join(" ") %> <%= node[:hostname] %>;
+
+  <% if @application[:log_format] %>
+    <% @application[:log_format].each do |log_format_name| %>
+  access_log <%= node[:nginx][:log_dir] %>/<%= @application[:domains].first %>.access.<%= log_format_name %>.log <%= log_format_name %>;
+    <% end %>
+  <% else %>
   access_log <%= node[:nginx][:log_dir] %>/<%= @application[:domains].first %>.access.log;
+  <%end %>
 
   keepalive_timeout 5;
 
@@ -16,16 +23,24 @@ server {
   <% end %>
 
   location / {
+    # If you don't find the filename in the static files
+    # Then request it from the unicorn server
+    try_files $uri @unicorn;
+  }
+
+  location @unicorn {
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header Host $http_host;
     proxy_redirect off;
 
-    # If you don't find the filename in the static files
-    # Then request it from the unicorn server
-    if (!-f $request_filename) {
-      proxy_pass http://unicorn_<%= @application[:domains].first %>;
-      break;
-    }
+  <% if node[:nginx] && node[:nginx][:proxy_read_timeout] -%>
+    proxy_read_timeout <%= node[:nginx][:proxy_read_timeout] %>;
+  <% end -%>
+  <% if node[:nginx] && node[:nginx][:proxy_send_timeout] -%>
+    proxy_send_timeout <%= node[:nginx][:proxy_send_timeout] %>;
+  <% end -%>
+
+    proxy_pass http://unicorn_<%= @application[:domains].first %>;
   }
 
   location /nginx_status {
@@ -37,10 +52,17 @@ server {
 
   location ~ ^/assets/ {
     expires 1y;
-    add_header Cache-Control public;
+    add_header cache-control public;
 
-    add_header ETag "";
-    break;
+    gzip_static on; # to serve pre-gzipped version
+
+    # If you don't find the filename in the static files
+    # Then request it from the unicorn server
+    try_files $uri @unicorn;
+
+    # Allow asset requests from our other domains. Comply with CORS.
+    # TODO: Update to pull in only our domains from config file
+    add_header Access-Control-Allow-Origin *;
   }
 
   error_page 500 502 503 504 /500.html;
@@ -71,25 +93,40 @@ server {
   <% end %>
 
   location / {
+    # If you don't find the filename in the static files
+    # Then request it from the unicorn server
+    try_files $uri @unicorn;
+  }
+
+  location @unicorn {
     proxy_set_header X-Forwarded-Proto https;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header Host $http_host;
     proxy_redirect off;
 
-    # If you don't find the filename in the static files
-    # Then request it from the unicorn server
-    if (!-f $request_filename) {
-      proxy_pass http://unicorn_<%= @application[:domains].first %>;
-      break;
-    }
+  <% if node[:nginx] && node[:nginx][:proxy_read_timeout] -%>
+    proxy_read_timeout <%= node[:nginx][:proxy_read_timeout] %>;
+  <% end -%>
+  <% if node[:nginx] && node[:nginx][:proxy_send_timeout] -%>
+    proxy_send_timeout <%= node[:nginx][:proxy_send_timeout] %>;
+  <% end -%>
+
+    proxy_pass http://unicorn_<%= @application[:domains].first %>;
   }
 
   location ~ ^/assets/ {
     expires 1y;
-    add_header Cache-Control public;
+    add_header cache-control public;
 
-    add_header ETag "";
-    break;
+    gzip_static on; # to serve pre-gzipped version
+
+    # If you don't find the filename in the static files
+    # Then request it from the unicorn server
+    try_files $uri @unicorn;
+
+    # Allow asset requests from our other domains. Comply with CORS.
+    # TODO: Update to pull in only our domains from config file
+    add_header Access-Control-Allow-Origin *;
   }
 
   error_page 500 502 503 504 /500.html;
