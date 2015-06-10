@@ -65,7 +65,7 @@ server {
     add_header Access-Control-Allow-Origin *;
   }
 
-  location ~ ^/images/ {
+  location ~ ^/assets/dataTables/ {
     expires 1y;
     add_header cache-control public;
 
@@ -79,6 +79,8 @@ server {
     # TODO: Update to pull in only our domains from config file
     add_header Access-Control-Allow-Origin *;
   }
+
+  
 
   error_page 500 502 503 504 /500.html;
   location = /500.html {
@@ -144,7 +146,7 @@ server {
     add_header Access-Control-Allow-Origin *;
   }
 
-  location ~ ^/images/ {
+  location ~ ^/assets/dataTables/ {
     expires 1y;
     add_header cache-control public;
 
@@ -157,7 +159,7 @@ server {
     # Allow asset requests from our other domains. Comply with CORS.
     # TODO: Update to pull in only our domains from config file
     add_header Access-Control-Allow-Origin *;
-  }  
+  }
 
   error_page 500 502 503 504 /500.html;
   location = /500.html {
